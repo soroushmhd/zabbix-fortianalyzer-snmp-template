@@ -6,9 +6,9 @@
 [![Security](https://img.shields.io/badge/Security-authPriv-0275B8)](https://datatracker.ietf.org/doc/html/rfc3414)
 [![License](https://img.shields.io/badge/License-MIT-2E7D32.svg)](LICENSE)
 
-A modern Zabbix template for monitoring Fortinet FortiAnalyzer appliances through SNMP.
+A Zabbix template for monitoring Fortinet FortiAnalyzer appliances through SNMP.
 
-The template uses numeric OIDs, so installing Fortinet MIB files on the Zabbix server or proxy is not required.
+The template uses numeric OIDs, so Fortinet MIB files are not required on the Zabbix server or proxy.
 
 ## Tested environment
 
@@ -24,160 +24,185 @@ The template uses numeric OIDs, so installing Fortinet MIB files on the Zabbix s
 | OID format | Numeric |
 | Fortinet MIB required | No |
 
-## Features
-
-The template provides monitoring for the following FortiAnalyzer components and resources.
+## Monitored metrics
 
 ### System monitoring
 
-- System name
-- System object identifier
-- Serial number
-- Firmware version
-- System uptime
-- CPU utilization
-- CPU utilization excluding nice processes
-- Memory capacity
-- Memory usage
-- Memory utilization
+| Item | Key |
+|---|---|
+| System name | `faz.system.name` |
+| System object ID | `faz.system.object_id` |
+| Serial number | `faz.system.serial` |
+| Firmware version | `faz.system.firmware` |
+| Uptime | `faz.system.uptime` |
+| CPU utilization | `faz.system.cpu.util` |
+| CPU utilization excluding nice processes | `faz.system.cpu.util.excluding_nice` |
+| Memory total | `faz.system.memory.total` |
+| Memory used | `faz.system.memory.used` |
+| Memory utilization | `faz.system.memory.util` |
 
-### FortiAnalyzer log processing
+### Log processing
 
-- Log receiving rate
-- Average log receiving rate
-- Log indexing rate
-- Log indexing lag
-- Log volume received today
-- Log volume received yesterday
-- Seven-day average log volume
+| Item | Key |
+|---|---|
+| Log receiving rate | `faz.log.rate` |
+| Log receiving rate average | `faz.log.rate.average` |
+| Log indexing rate | `faz.log.indexing.rate` |
+| Log indexing lag | `faz.log.indexing.lag` |
+| Log volume received today | `faz.log.volume.today` |
+| Log volume received yesterday | `faz.log.volume.yesterday` |
+| Seven-day daily average log volume | `faz.log.volume.week.average` |
 
-### ADOM monitoring
+### ADOM summary
 
-Low-level discovery is used to detect and monitor administrative domains.
+| Item | Key |
+|---|---|
+| ADOM enabled state | `faz.adom.enabled` |
+| Number of administrative domains | `faz.adom.count` |
+| Maximum number of administrative domains | `faz.adom.max` |
 
-Collected ADOM information includes:
+### Managed resource summary
 
-- ADOM name
-- ADOM state
-- ADOM operation mode
-- Number of managed devices
-- Number of policy packages
-- Archive quota
-- Archive retention
-- Archive used space
-- Archive utilization
-- Analytics quota
-- Analytics retention
-- Analytics used space
-- Analytics utilization
-- Log receiving rate
-- Log volume received today
-- Log volume received yesterday
-- Weekly average log volume
+| Item | Key |
+|---|---|
+| Total managed devices | `faz.device.count` |
+| Total managed VDOMs | `faz.vdom.count` |
 
-By default, ADOMs without managed devices are excluded by the discovery filter.
+### High availability
 
-### Managed device monitoring
+| Item | Key |
+|---|---|
+| HA mode | `faz.ha.mode` |
+| HA cluster ID | `faz.ha.cluster.id` |
+| HA peer count | `faz.ha.peer.count` |
 
-Low-level discovery is used to identify Fortinet devices managed by FortiAnalyzer.
+HA scalar metrics have been validated on a standalone FortiAnalyzer appliance. HA peer discovery and HA-related trigger behavior have not been validated against an active FortiAnalyzer HA cluster.
 
-Collected managed device information includes:
+## Low-level discovery
 
-- Device name
-- Serial number
-- Model
-- Management IP address
-- Assigned ADOM
-- Operating system major version
-- Operating system minor release
-- Operating system build number
-- Connection state
-- Configuration state
-- Database state
-- Support contract state
-- HA mode
-- HA group
-- VDOM state
-- One-hour log receiving rate average
-- One-day log receiving rate average
-- Seven-day log receiving rate average
-- Archive log used space
+| Discovery rule | Key | Default interval |
+|---|---|---|
+| ADOM discovery | `faz.adom.discovery` | 1h |
+| Managed device discovery | `faz.device.discovery` | 1h |
+| FortiAnalyzer disk I/O discovery | `faz.disk.io.discovery` | 1h |
+| Storage discovery | `faz.storage.discovery` | 1h |
 
-The template also collects the total number of managed devices and managed VDOMs reported by FortiAnalyzer.
+### ADOM discovery
 
-### Storage monitoring
+ADOMs without managed devices are excluded by the default discovery filter.
 
-Storage resources are discovered dynamically using SNMP low-level discovery.
+| Item prototype | Key |
+|---|---|
+| Analytics quota | `faz.adom.analytics.quota[{#SNMPINDEX}]` |
+| Analytics retention | `faz.adom.analytics.retention[{#SNMPINDEX}]` |
+| Analytics used space | `faz.adom.analytics.used[{#SNMPINDEX}]` |
+| Analytics utilization | `faz.adom.analytics.utilization[{#SNMPINDEX}]` |
+| Archive quota | `faz.adom.archive.quota[{#SNMPINDEX}]` |
+| Archive retention | `faz.adom.archive.retention[{#SNMPINDEX}]` |
+| Archive used space | `faz.adom.archive.used[{#SNMPINDEX}]` |
+| Archive utilization | `faz.adom.archive.utilization[{#SNMPINDEX}]` |
+| Managed devices | `faz.adom.devices[{#SNMPINDEX}]` |
+| Log receiving rate | `faz.adom.log.rate[{#SNMPINDEX}]` |
+| Log volume received today | `faz.adom.log.volume.today[{#SNMPINDEX}]` |
+| Log volume received yesterday | `faz.adom.log.volume.yesterday[{#SNMPINDEX}]` |
+| Weekly average log volume | `faz.adom.log.volume.weekly.avg[{#SNMPINDEX}]` |
+| Operation mode | `faz.adom.mode[{#SNMPINDEX}]` |
+| Policy packages | `faz.adom.policy.packages[{#SNMPINDEX}]` |
+| State | `faz.adom.state[{#SNMPINDEX}]` |
 
-The template collects:
+### Managed device discovery
 
-- Storage allocation unit
-- Total allocation units
-- Used allocation units
-- Total storage capacity
-- Used storage capacity
-- Storage utilization percentage
+| Item prototype | Key |
+|---|---|
+| Assigned ADOM | `faz.device.adom[{#SNMPINDEX}]` |
+| Archive log used space | `faz.device.archive.used[{#SNMPINDEX}]` |
+| Configuration state | `faz.device.configuration.state[{#SNMPINDEX}]` |
+| Connection state | `faz.device.connection.state[{#SNMPINDEX}]` |
+| Database state | `faz.device.database.state[{#SNMPINDEX}]` |
+| HA group | `faz.device.ha.group[{#SNMPINDEX}]` |
+| HA mode | `faz.device.ha.mode[{#SNMPINDEX}]` |
+| Management IP address | `faz.device.ip[{#SNMPINDEX}]` |
+| One-hour log rate average | `faz.device.log.rate.hour[{#SNMPINDEX}]` |
+| One-day log rate average | `faz.device.log.rate.day[{#SNMPINDEX}]` |
+| Seven-day log rate average | `faz.device.log.rate.week[{#SNMPINDEX}]` |
+| Model | `faz.device.model[{#SNMPINDEX}]` |
+| Operating system build | `faz.device.os.build[{#SNMPINDEX}]` |
+| Operating system minor release | `faz.device.os.release[{#SNMPINDEX}]` |
+| Operating system major version | `faz.device.os.version[{#SNMPINDEX}]` |
+| Serial number | `faz.device.serial[{#SNMPINDEX}]` |
+| Support state | `faz.device.support.state[{#SNMPINDEX}]` |
+| VDOM state | `faz.device.vdom.enabled[{#SNMPINDEX}]` |
 
-The default discovery filter includes the following FortiAnalyzer storage resources:
+### Storage discovery
 
-- `Compact Flash Disk`
-- `Internal Hard Disk`
+The default discovery filter includes FortiAnalyzer disk resources and excludes memory-related entries.
 
-Physical memory and swap entries are excluded from storage discovery.
+| Included resources | Excluded resources |
+|---|---|
+| `Compact Flash Disk` | `Physical Memory` |
+| `Internal Hard Disk` | `Swap Memory` |
 
-### Disk I/O monitoring
+| Item prototype | Key |
+|---|---|
+| Allocation unit | `faz.storage.allocation_unit[{#SNMPINDEX}]` |
+| Total allocation units | `faz.storage.size.units[{#SNMPINDEX}]` |
+| Used allocation units | `faz.storage.used.units[{#SNMPINDEX}]` |
+| Total space | `faz.storage.total[{#SNMPINDEX}]` |
+| Used space | `faz.storage.used[{#SNMPINDEX}]` |
+| Storage utilization | `faz.storage.util[{#SNMPINDEX}]` |
 
-FortiAnalyzer disk resources are discovered through a separate vendor-specific discovery rule.
+### Disk I/O discovery
 
-The template collects:
+| Item prototype | Key |
+|---|---|
+| Disk I/O utilization | `faz.disk.io.util[{#SNMPINDEX}]` |
 
-- Disk name
-- Disk I/O utilization
+## Triggers
 
-### High availability monitoring
+| Category | Included triggers |
+|---|---|
+| CPU | High and critically high CPU utilization |
+| Memory | High and critically high memory utilization |
+| Storage | High and critically high storage utilization |
+| Disk I/O | High and critically high disk I/O utilization |
+| ADOM archive | High and critically high archive utilization |
+| ADOM analytics | High and critically high analytics utilization |
+| Log indexing | High and critically high indexing lag |
+| Availability | SNMP data collection failure and restart detection |
+| Managed devices | Connection failure and configuration synchronization failure |
+| High availability | HA enabled without an available peer |
 
-The template collects the following FortiAnalyzer HA information:
+Trigger thresholds can be customized through template macros. Warning triggers depend on their corresponding critical triggers to prevent duplicate problems.
 
-- HA mode
-- HA cluster ID
-- HA peer count
+## Template macros
 
-HA scalar metrics have been validated on a standalone FortiAnalyzer appliance but not against an active HA cluster.
+| Macro | Default | Description |
+|---|---:|---|
+| `{$FAZ.ADOM.LOG.UTIL.WARN}` | 80 | Warning threshold for ADOM archive and analytics log utilization, in percent |
+| `{$FAZ.ADOM.LOG.UTIL.CRIT}` | 90 | Critical threshold for ADOM archive and analytics log utilization, in percent |
+| `{$FAZ.CPU.UTIL.WARN}` | 80 | Warning threshold for CPU utilization, in percent |
+| `{$FAZ.CPU.UTIL.CRIT}` | 90 | Critical threshold for CPU utilization, in percent |
+| `{$FAZ.DISK.IO.UTIL.WARN}` | 80 | Warning threshold for disk I/O utilization, in percent |
+| `{$FAZ.DISK.IO.UTIL.CRIT}` | 90 | Critical threshold for disk I/O utilization, in percent |
+| `{$FAZ.DISK.UTIL.WARN}` | 80 | Warning threshold for storage utilization, in percent |
+| `{$FAZ.DISK.UTIL.CRIT}` | 90 | Critical threshold for storage utilization, in percent |
+| `{$FAZ.LOG.INDEXING.LAG.WARN}` | 300 | Warning threshold for log indexing lag, in seconds |
+| `{$FAZ.LOG.INDEXING.LAG.CRIT}` | 900 | Critical threshold for log indexing lag, in seconds |
+| `{$FAZ.MEMORY.UTIL.WARN}` | 80 | Warning threshold for memory utilization, in percent |
+| `{$FAZ.MEMORY.UTIL.CRIT}` | 90 | Critical threshold for memory utilization, in percent |
+| `{$FAZ.SNMP.NODATA.TIME}` | 10m | Maximum interval without SNMP data before an availability problem is generated |
 
-HA peer discovery is planned for a future update after validation against an active FortiAnalyzer HA environment.
+## Graphs
 
-### Triggers
-
-The template includes configurable triggers for:
-
-- High and critically high CPU utilization
-- High and critically high memory utilization
-- High and critically high storage utilization
-- High and critically high disk I/O utilization
-- High and critically high ADOM archive utilization
-- High and critically high ADOM analytics utilization
-- High and critically high log indexing lag
-- FortiAnalyzer restart detection
-- SNMP data collection failure
-- Managed device connection failure
-- Managed device configuration synchronization failure
-- HA enabled without an available peer
-
-Trigger thresholds can be customized through template macros.
-
-Warning triggers depend on their corresponding critical triggers to prevent duplicate problems.
-
-### Graphs
-
-The template includes graphs and graph prototypes for:
-
-- System resource utilization
-- Log processing rates
-- Log indexing performance
-- Log volume
-- ADOM log utilization
-- Storage utilization
-- Disk I/O utilization
+| Graph | Scope |
+|---|---|
+| System resource utilization | CPU and memory utilization |
+| Log processing rates | Log receiving and indexing rates |
+| Log indexing performance | Log indexing lag |
+| Log volume | Current and historical log volume |
+| ADOM log utilization | Archive and analytics utilization per ADOM |
+| Storage utilization | Utilization per discovered storage resource |
+| Disk I/O utilization | I/O utilization per discovered disk |
 
 ## Dashboard
 
@@ -187,19 +212,19 @@ The template includes a dashboard providing a consolidated view of system resour
 
 ## Requirements
 
-- Zabbix 7.0 or later
-- FortiAnalyzer with SNMP enabled
-- Network connectivity from the Zabbix server or proxy to the FortiAnalyzer SNMP interface
-- An SNMP interface configured on the Zabbix host
-- SNMPv2c or SNMPv3 credentials supported by the target FortiAnalyzer configuration
+| Requirement | Details |
+|---|---|
+| Zabbix | Version 7.0 or later |
+| FortiAnalyzer | SNMP must be enabled |
+| Connectivity | The Zabbix server or proxy must be able to reach the FortiAnalyzer SNMP interface |
+| Host configuration | An SNMP interface must be configured on the Zabbix host |
+| Credentials | SNMPv2c or SNMPv3 credentials supported by the target FortiAnalyzer configuration |
 
-The tested environment uses SNMPv3 with `authPriv`.
-
-The template does not contain SNMP usernames, authentication passwords, privacy passwords, community strings, management addresses, or other environment-specific credentials.
+The tested environment uses SNMPv3 with `authPriv`. The template does not contain SNMP usernames, authentication passwords, privacy passwords, community strings, management addresses, or other environment-specific credentials.
 
 ## Installation
 
-1. Download the following template file:
+1. Download the template file:
 
    ```text
    templates/template_fortianalyzer_snmp.yaml
@@ -215,70 +240,83 @@ The template does not contain SNMP usernames, authentication passwords, privacy 
 
 4. Select **Import**.
 
-5. Select `template_fortianalyzer_snmp.yaml`.
+5. Select `template_fortianalyzer_snmp.yaml` and complete the import.
 
-6. Review the import options and complete the import.
+6. Create or open the FortiAnalyzer host.
 
-7. Create or open the FortiAnalyzer host.
+7. Add an SNMP interface using the FortiAnalyzer management address.
 
-8. Add an SNMP interface using the FortiAnalyzer management address.
+8. Configure the required SNMP credentials on the host interface.
 
-9. Configure the required SNMP credentials on the host interface.
+9. Link the `FortiAnalyzer by SNMP` template to the host.
 
-10. Link the `FortiAnalyzer by SNMP` template to the host.
+10. Wait for the first polling and low-level discovery cycles to complete.
 
-11. Wait for the first polling and low-level discovery cycles to complete.
-
-12. Review the collected values under:
+11. Review the collected values under:
 
     ```text
     Monitoring → Latest data
     ```
 
-For additional information, see the [installation guide](docs/installation.md).
-
 ## SNMP configuration
 
-The tested configuration uses SNMPv3 with the following security settings:
+| Setting | Tested value |
+|---|---|
+| SNMP version | SNMPv3 |
+| Security level | `authPriv` |
+| Authentication protocol | SHA |
+| Privacy protocol | AES |
 
-```text
-Security level: authPriv
-Authentication protocol: SHA
-Privacy protocol: AES
-```
-
-SNMP credentials must be configured on the Zabbix host SNMP interface and must never be stored inside the template export or committed to the repository.
+SNMP credentials must be configured on the Zabbix host interface and must never be stored inside the template export or committed to the repository.
 
 ## Template design
 
-This template follows these design principles:
+| Principle | Implementation |
+|---|---|
+| MIB independence | Numeric OIDs avoid a runtime dependency on Fortinet MIB files |
+| Dynamic discovery | LLD is used for ADOMs, managed devices, storage resources, and disks |
+| Derived metrics | Calculated items provide memory and storage utilization and capacity metrics |
+| Credential isolation | Environment-specific values and credentials remain outside the template |
+| Predictable keys | Item and discovery keys use the `faz` namespace |
+| Resource separation | Discovery rules and prototypes are separated by monitored resource type |
+| Configurable thresholds | Trigger thresholds are controlled through template macros |
+| Duplicate prevention | Warning triggers depend on their corresponding critical triggers |
 
-- Numeric OIDs are used to avoid a runtime dependency on external MIB files.
-- Low-level discovery is used for dynamic resources such as ADOMs, managed devices, storage resources, and disks.
-- Calculated items are used where utilization or capacity values must be derived from collected metrics.
-- Environment-specific values and credentials are kept outside the exported template.
-- Item keys are unique and predictable.
-- Discovery rules and item prototypes are separated by monitored resource type.
-- Trigger thresholds are configurable through template macros.
-- Warning triggers depend on their corresponding critical triggers to prevent duplicate problems.
-- Hardware-specific sensor monitoring is not included without validation on physical FortiAnalyzer appliances.
+## Testing and validation
+
+The template has been imported and tested against the environment described above.
+
+| Validated area | Status |
+|---|---|
+| SNMP data collection | Validated |
+| System CPU and memory monitoring | Validated |
+| FortiAnalyzer log processing metrics | Validated |
+| ADOM discovery | Validated |
+| Managed device discovery | Validated |
+| Storage discovery | Validated |
+| FortiAnalyzer disk I/O discovery | Validated |
+| Calculated memory and storage utilization | Validated |
+| Value mappings | Validated |
+| Trigger expressions and dependencies | Validated |
+| Graphs and graph prototypes | Validated |
+| Dashboard widgets | Validated |
+| Active FortiAnalyzer HA cluster | Not yet validated |
 
 ## Known limitations
 
-- The template has currently been validated only against FortiAnalyzer VM64 v7.6.7 build 3737.
-- HA peer discovery is not included.
-- HA-related trigger behavior has not been validated against an active FortiAnalyzer HA cluster.
-- Hardware-specific sensors are not included because testing was performed on a FortiAnalyzer VM64 appliance.
-
-## Documentation
-
-| Document | Description |
+| Limitation | Details |
 |---|---|
-| [Installation guide](docs/installation.md) | Template import and host configuration |
-| [Metrics reference](docs/metrics.md) | Items, discovery rules, prototypes, and monitored resources |
-| [Testing notes](docs/testing.md) | Tested versions, validation process, and known limitations |
-| `screenshots/` | Zabbix dashboard and monitoring screenshots |
-| `templates/` | Importable Zabbix template files |
+| Tested FortiAnalyzer version | Currently validated only against FortiAnalyzer VM64 v7.6.7 build 3737 |
+| HA validation | HA-related trigger behavior has not been validated against an active HA cluster |
+| HA discovery | HA peer discovery is not currently included |
+| Hardware sensors | Hardware-specific sensors are not included because testing was performed on a virtual appliance |
+
+## Repository contents
+
+| Path | Description |
+|---|---|
+| [Screenshots](screenshots/) | Dashboard and monitoring screenshots |
+| [Templates](templates/) | Importable Zabbix template files |
 
 ## License
 
