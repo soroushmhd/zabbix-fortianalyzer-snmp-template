@@ -11,11 +11,27 @@
 | Security level | `authPriv` |
 | Authentication protocol | SHA |
 | Privacy protocol | AES |
+| OID format | Numeric |
 
-## Current status
+## Validated functionality
 
-The current items and discovery rules have been tested against the environment listed above.
+The following functionality has been validated against the tested environment:
 
-Triggers are intentionally excluded until operational thresholds and baselines are validated.
+- SNMP data collection
+- System CPU and memory monitoring
+- FortiAnalyzer log processing metrics
+- ADOM discovery
+- Managed device discovery
+- Storage discovery
+- FortiAnalyzer disk I/O discovery
+- Calculated memory and storage utilization
+- Dashboard widgets
+- Graphs and graph prototypes
+- Trigger expressions and dependencies
 
-HA peer discovery requires additional testing against an active FortiAnalyzer HA cluster.
+## Known limitations
+
+- HA peer discovery is not included.
+- HA-related trigger behavior has not been validated against an active FortiAnalyzer HA cluster.
+- Hardware-specific sensors are not included because testing was performed on a FortiAnalyzer VM64 appliance.
+- The template has currently been validated only against FortiAnalyzer v7.6.7 build 3737.

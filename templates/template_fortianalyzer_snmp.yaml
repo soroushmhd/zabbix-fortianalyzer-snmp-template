@@ -8,14 +8,31 @@ zabbix_export:
       template: 'FortiAnalyzer by SNMP'
       name: 'FortiAnalyzer by SNMP'
       description: |
-        Template for monitoring Fortinet FortiAnalyzer appliances through SNMP.
-        
-        Designed and tested with:
-        - Zabbix 7.0
-        - FortiAnalyzer VM64 v7.6.7 build 3737
-        - SNMPv3 authPriv
-        
-        The template uses numeric OIDs and does not require Fortinet MIB files on the Zabbix server.
+        Template for monitoring Fortinet FortiAnalyzer appliances via SNMP.
+
+        Tested with:
+        - Zabbix 7.0.31
+        - FortiAnalyzer VM64 v7.6.7, build 3737
+        - SNMPv3 with authPriv security level
+        - SHA authentication and AES privacy protocols
+
+        The template uses numeric OIDs and does not require Fortinet MIB files to be installed on the Zabbix server or proxy.
+
+        Setup:
+        1. Enable and configure SNMP on the FortiAnalyzer appliance.
+        2. Add an SNMP interface to the FortiAnalyzer host in Zabbix.
+        3. Configure the required SNMP credentials on the host interface.
+        4. Link the "FortiAnalyzer by SNMP" template to the host.
+        5. Wait for the initial polling and low-level discovery cycles to complete.
+
+        Known limitations:
+        - Validated only against FortiAnalyzer VM64 v7.6.7, build 3737.
+        - HA-related triggers have not been validated against an active FortiAnalyzer HA cluster.
+        - Hardware-specific sensors are not included.
+
+        Author: Soroush Mehmandoust
+        Version: 1.0
+        Supported Zabbix version: 7.0 and later
       groups:
         - name: 'Templates/Network devices'
       items:
@@ -27,7 +44,7 @@ zabbix_export:
           delay: 5m
           history: 7d
           trends: 90d
-          description: 'Number of administrative domains currently present on the FortiAnalyzer.'
+          description: 'Number of administrative domains currently present in the FortiAnalyzer ADOM table.'
           tags:
             - tag: component
               value: adom
@@ -38,8 +55,15 @@ zabbix_export:
           key: faz.adom.enabled
           delay: 5m
           history: 7d
-          trends: 90d
-          description: 'Indicates whether Administrative Domains are enabled on the FortiAnalyzer.'
+          trends: '0'
+          description: |
+            Indicates whether the administrative domain feature is enabled on the FortiAnalyzer.
+
+            Possible values:
+            1 - Disabled
+            2 - Enabled
+          valuemap:
+            name: 'Fortinet boolean state'
           tags:
             - tag: component
               value: adom
@@ -51,7 +75,7 @@ zabbix_export:
           delay: 1h
           history: 7d
           trends: 90d
-          description: 'Maximum number of administrative domains supported by the appliance or license.'
+          description: 'Maximum number of administrative domains permitted by the appliance platform or license.'
           tags:
             - tag: component
               value: adom
@@ -63,6 +87,7 @@ zabbix_export:
           delay: 5m
           history: 7d
           trends: 90d
+          description: 'Total number of devices managed by the FortiAnalyzer appliance.'
           tags:
             - tag: component
               value: managed-device
@@ -73,7 +98,8 @@ zabbix_export:
           key: faz.ha.cluster.id
           delay: 1h
           history: 7d
-          trends: 90d
+          trends: '0'
+          description: 'Identifier of the FortiAnalyzer HA cluster.'
           tags:
             - tag: component
               value: ha
@@ -84,7 +110,14 @@ zabbix_export:
           key: faz.ha.mode
           delay: 5m
           history: 7d
-          trends: 90d
+          trends: '0'
+          description: |
+            Current FortiAnalyzer high-availability operating mode.
+
+            Possible values:
+            0 - Standalone
+            1 - Master
+            2 - Slave
           valuemap:
             name: 'FortiAnalyzer HA mode'
           tags:
@@ -98,6 +131,7 @@ zabbix_export:
           delay: 5m
           history: 7d
           trends: 90d
+          description: 'Number of HA peers currently reported by the FortiAnalyzer.'
           tags:
             - tag: component
               value: ha
@@ -113,6 +147,32 @@ zabbix_export:
           tags:
             - tag: component
               value: log
+          triggers:
+            - uuid: 9ad14631127441bd85926b1f4587559e
+              expression: 'min(/FortiAnalyzer by SNMP/faz.log.indexing.lag,5m)>{$FAZ.LOG.INDEXING.LAG.CRIT}'
+              name: 'Log indexing lag is critically high'
+              opdata: 'Current lag: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'The delay between receiving and indexing logs has remained above the critical threshold.'
+              tags:
+                - tag: component
+                  value: log
+                - tag: scope
+                  value: performance
+            - uuid: 0f2abc05934544b392a7ae9fc3034c8e
+              expression: 'min(/FortiAnalyzer by SNMP/faz.log.indexing.lag,5m)>{$FAZ.LOG.INDEXING.LAG.WARN}'
+              name: 'Log indexing lag is high'
+              opdata: 'Current lag: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'The delay between receiving and indexing logs has remained above the warning threshold.'
+              dependencies:
+                - name: 'Log indexing lag is critically high'
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.log.indexing.lag,5m)>{$FAZ.LOG.INDEXING.LAG.CRIT}'
+              tags:
+                - tag: component
+                  value: log
+                - tag: scope
+                  value: performance
         - uuid: 4e5838a59ef64311a40377e7ce3c1057
           name: 'Log indexing rate'
           type: SNMP_AGENT
@@ -215,7 +275,7 @@ zabbix_export:
             - tag: component
               value: log
         - uuid: 70faa51a57a04d55892f65a53f7f1655
-          name: 'CPU utilization'
+          name: 'FortiAnalyzer: CPU utilization'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.2.1.1.0
           key: faz.system.cpu.util
@@ -226,19 +286,51 @@ zabbix_export:
           tags:
             - tag: component
               value: cpu
+          triggers:
+            - uuid: c32a54371c23432586cbb34cb7e7cf10
+              expression: 'min(/FortiAnalyzer by SNMP/faz.system.cpu.util,5m)>{$FAZ.CPU.UTIL.CRIT}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.system.cpu.util,5m)<{$FAZ.CPU.UTIL.CRIT}'
+              name: 'CPU utilization is critically high'
+              opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'CPU utilization has remained above the configured critical threshold for 5 minutes.'
+              tags:
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
+            - uuid: 50bccac1faf0478b9acc19a944c67aa7
+              expression: 'min(/FortiAnalyzer by SNMP/faz.system.cpu.util,5m)>{$FAZ.CPU.UTIL.WARN}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.system.cpu.util,5m)<{$FAZ.CPU.UTIL.WARN}'
+              name: 'CPU utilization is high'
+              opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'CPU utilization has remained above the configured warning threshold for 5 minutes.'
+              dependencies:
+                - name: 'CPU utilization is critically high'
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.system.cpu.util,5m)>{$FAZ.CPU.UTIL.CRIT}'
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.system.cpu.util,5m)<{$FAZ.CPU.UTIL.CRIT}'
+              tags:
+                - tag: component
+                  value: cpu
+                - tag: scope
+                  value: performance
         - uuid: afa9604af2e047c8ac53faed70a4c172
-          name: 'CPU utilization excluding nice processes'
+          name: 'FortiAnalyzer: CPU utilization excluding nice processes'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.2.1.6.0
           key: faz.system.cpu.util.excluding_nice
           history: 7d
           trends: 90d
           units: '%'
+          description: 'Current FortiAnalyzer CPU utilization excluding CPU time consumed by processes running with a nice priority, expressed as a percentage.'
           tags:
             - tag: component
               value: cpu
         - uuid: 80f5614bd10a49888ed483c86bb16ea9
-          name: 'Firmware version'
+          name: 'FortiAnalyzer: Firmware version'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.2.1.7.0
           key: faz.system.firmware
@@ -246,12 +338,13 @@ zabbix_export:
           history: 30d
           value_type: CHAR
           trends: '0'
+          description: 'Firmware version currently installed on the FortiAnalyzer.'
           inventory_link: SOFTWARE
           tags:
             - tag: component
               value: system
         - uuid: 63b3a8caf2ca4085adc2dc442a3ee06a
-          name: 'Memory total'
+          name: 'FortiAnalyzer: Memory total'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.2.1.3.0
           key: faz.system.memory.total
@@ -259,7 +352,7 @@ zabbix_export:
           history: 7d
           trends: 90d
           units: B
-          description: 'Total physical and swap memory reported by FortiAnalyzer'
+          description: 'Total physical and swap memory are reported by FortiAnalyzer. The SNMP value is reported in KiB and converted to bytes during preprocessing.'
           preprocessing:
             - type: MULTIPLIER
               parameters:
@@ -268,13 +361,14 @@ zabbix_export:
             - tag: component
               value: memory
         - uuid: 75079a69efae4e8584999d51e5d94b8a
-          name: 'Memory used'
+          name: 'FortiAnalyzer: Memory used'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.2.1.2.0
           key: faz.system.memory.used
           history: 7d
           trends: 90d
           units: B
+          description: 'Current physical and swap memory used by FortiAnalyzer. The SNMP value is reported in KiB and converted to bytes during preprocessing.'
           preprocessing:
             - type: MULTIPLIER
               parameters:
@@ -283,18 +377,49 @@ zabbix_export:
             - tag: component
               value: memory
         - uuid: 3c4184c5bda74bd285550be3b5588108
-          name: 'Memory utilization'
+          name: 'FortiAnalyzer: Memory utilization'
           type: CALCULATED
           key: faz.system.memory.util
           history: 7d
+          value_type: FLOAT
           trends: 90d
           units: '%'
           params: 'last(//faz.system.memory.used)/last(//faz.system.memory.total)*100'
+          description: 'Current memory utilization calculated as used memory divided by total memory, expressed as a percentage.'
           tags:
             - tag: component
               value: memory
+          triggers:
+            - uuid: b562978080874400a1efd3e9d92c148f
+              expression: 'min(/FortiAnalyzer by SNMP/faz.system.memory.util,5m)>{$FAZ.MEMORY.UTIL.CRIT}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.system.memory.util,5m)<{$FAZ.MEMORY.UTIL.CRIT}'
+              name: 'Memory utilization is critically high'
+              opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              tags:
+                - tag: component
+                  value: memory
+                - tag: scope
+                  value: performance
+            - uuid: 44376119de6749cd94c3e7eac9fdea50
+              expression: 'min(/FortiAnalyzer by SNMP/faz.system.memory.util,5m)>{$FAZ.MEMORY.UTIL.WARN}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.system.memory.util,5m)<{$FAZ.MEMORY.UTIL.WARN}'
+              name: 'Memory utilization is high'
+              opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              dependencies:
+                - name: 'Memory utilization is critically high'
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.system.memory.util,5m)>{$FAZ.MEMORY.UTIL.CRIT}'
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.system.memory.util,5m)<{$FAZ.MEMORY.UTIL.CRIT}'
+              tags:
+                - tag: component
+                  value: memory
+                - tag: scope
+                  value: performance
         - uuid: a6a974d878ec49c5b314de235db1c041
-          name: 'System name'
+          name: 'FortiAnalyzer: System name'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.2.1.1.5.0
           key: faz.system.name
@@ -302,11 +427,12 @@ zabbix_export:
           history: 7d
           value_type: CHAR
           trends: '0'
+          description: 'Administratively assigned name of the FortiAnalyzer.'
           tags:
             - tag: component
               value: system
         - uuid: b765a6e40dc0490988eada608968aace
-          name: 'System object ID'
+          name: 'FortiAnalyzer: System object ID'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.2.1.1.2.0
           key: faz.system.object_id
@@ -314,17 +440,33 @@ zabbix_export:
           history: 7d
           value_type: CHAR
           trends: '0'
+          description: 'Vendor-assigned object identifier identifying the FortiAnalyzer platform.'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 44f6d01a6df748ac84540421f74b4067
+          name: 'FortiAnalyzer: Serial number'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.12356.100.1.1.1.0
+          key: faz.system.serial
+          delay: 1h
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          description: 'Serial number of the FortiAnalyzer appliance.'
+          inventory_link: SERIALNO_A
           tags:
             - tag: component
               value: system
         - uuid: 8ed9a70cb2ae4f238f7efe0067bd6d6a
-          name: Uptime
+          name: 'FortiAnalyzer: Uptime'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.2.1.8.0
           key: faz.system.uptime
           history: 7d
           trends: 90d
           units: uptime
+          description: 'Time elapsed since the FortiAnalyzer network management subsystem was last initialized.'
           preprocessing:
             - type: MULTIPLIER
               parameters:
@@ -332,6 +474,30 @@ zabbix_export:
           tags:
             - tag: component
               value: system
+          triggers:
+            - uuid: 14fbe1943db04a278ab2351c7c529c35
+              expression: 'last(/FortiAnalyzer by SNMP/faz.system.uptime)<10m'
+              name: 'Host has been restarted'
+              event_name: 'FortiAnalyzer has been restarted (uptime < 10m)'
+              opdata: 'Current uptime: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'The FortiAnalyzer system uptime is less than 10 minutes, which indicates that the appliance or its SNMP management subsystem has recently restarted.'
+              tags:
+                - tag: component
+                  value: system
+                - tag: scope
+                  value: availability
+            - uuid: 8dda8a9c8116412ab2f4041a16f38b71
+              expression: 'nodata(/FortiAnalyzer by SNMP/faz.system.uptime,{$FAZ.SNMP.NODATA.TIME})=1'
+              name: 'No SNMP data collection'
+              opdata: 'Last value: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'No uptime data has been received from the FortiAnalyzer appliance during the configured time period. Check SNMP availability, credentials, firewall rules, and network connectivity.'
+              tags:
+                - tag: component
+                  value: system
+                - tag: scope
+                  value: availability
         - uuid: 487716248b7d41efba57fbf3bf060267
           name: 'Managed VDOMs: Total'
           type: SNMP_AGENT
@@ -340,6 +506,7 @@ zabbix_export:
           delay: 5m
           history: 7d
           trends: 90d
+          description: 'Total number of VDOMs reported for devices managed by the FortiAnalyzer.'
           tags:
             - tag: component
               value: managed-device
@@ -347,7 +514,7 @@ zabbix_export:
         - uuid: 6ef4206521d0475590ddc15758a8e962
           name: 'ADOM discovery'
           type: SNMP_AGENT
-          snmp_oid: 'discovery[{#ADOM.NAME},.1.3.6.1.4.1.12356.103.5.2.1.2,{#ADOM.DEVICES},.1.3.6.1.4.1.12356.103.5.2.1.5]'
+          snmp_oid: 'discovery[{#ADOM.NAME},1.3.6.1.4.1.12356.103.5.2.1.2,{#ADOM.DEVICES},1.3.6.1.4.1.12356.103.5.2.1.5]'
           key: faz.adom.discovery
           delay: 1h
           filter:
@@ -357,6 +524,7 @@ zabbix_export:
                 formulaid: A
           enabled_lifetime_type: DISABLE_AFTER
           enabled_lifetime: 1d
+          description: 'Discovers FortiAnalyzer administrative domains using the ADOM name and managed device count columns. By default, the discovery filter includes only ADOMs containing at least one managed device.'
           item_prototypes:
             - uuid: 2a95cf04388640fe8a32e4ef7d571e2b
               name: 'ADOM [{#ADOM.NAME}]: Analytics quota'
@@ -413,7 +581,7 @@ zabbix_export:
               type: SNMP_AGENT
               snmp_oid: '1.3.6.1.4.1.12356.103.5.2.1.18.{#SNMPINDEX}'
               key: 'faz.adom.analytics.utilization[{#SNMPINDEX}]'
-              delay: 15m
+              delay: 5m
               history: 7d
               value_type: FLOAT
               trends: 90d
@@ -427,6 +595,45 @@ zabbix_export:
                   value: '{#ADOM.NAME}'
                 - tag: component
                   value: adom
+              trigger_prototypes:
+                - uuid: 458dc6fdc7af43eda6721dbcb9aebbb1
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.adom.analytics.utilization[{#SNMPINDEX}],15m)>{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.adom.analytics.utilization[{#SNMPINDEX}],15m)<{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                  name: 'ADOM [{#ADOM.NAME}]: Analytics log utilization is critically high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  manual_close: 'YES'
+                  tags:
+                    - tag: adom
+                      value: '{#ADOM.NAME}'
+                    - tag: component
+                      value: adom
+                    - tag: scope
+                      value: capacity
+                    - tag: storage
+                      value: analytics
+                - uuid: 8dc1b7cc27684ed5a59b93025834ead4
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.adom.analytics.utilization[{#SNMPINDEX}],15m)>{$FAZ.ADOM.LOG.UTIL.WARN}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.adom.analytics.utilization[{#SNMPINDEX}],15m)<{$FAZ.ADOM.LOG.UTIL.WARN}'
+                  name: 'ADOM [{#ADOM.NAME}]: Analytics log utilization is high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  manual_close: 'YES'
+                  dependencies:
+                    - name: 'ADOM [{#ADOM.NAME}]: Analytics log utilization is critically high'
+                      expression: 'min(/FortiAnalyzer by SNMP/faz.adom.analytics.utilization[{#SNMPINDEX}],15m)>{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                      recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.adom.analytics.utilization[{#SNMPINDEX}],15m)<{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                  tags:
+                    - tag: adom
+                      value: '{#ADOM.NAME}'
+                    - tag: component
+                      value: adom
+                    - tag: scope
+                      value: capacity
+                    - tag: storage
+                      value: analytics
             - uuid: e9cc97188f95491dae11c6eb7a4aa9be
               name: 'ADOM [{#ADOM.NAME}]: Archive quota'
               type: SNMP_AGENT
@@ -482,7 +689,7 @@ zabbix_export:
               type: SNMP_AGENT
               snmp_oid: '1.3.6.1.4.1.12356.103.5.2.1.14.{#SNMPINDEX}'
               key: 'faz.adom.archive.utilization[{#SNMPINDEX}]'
-              delay: 15m
+              delay: 5m
               history: 7d
               value_type: FLOAT
               trends: 90d
@@ -496,6 +703,45 @@ zabbix_export:
                   value: '{#ADOM.NAME}'
                 - tag: component
                   value: adom
+              trigger_prototypes:
+                - uuid: e6104aac843641e383524816bdfe8ca4
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.adom.archive.utilization[{#SNMPINDEX}],15m)>{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.adom.archive.utilization[{#SNMPINDEX}],15m)<{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                  name: 'ADOM [{#ADOM.NAME}]: Archive log utilization is critically high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  manual_close: 'YES'
+                  tags:
+                    - tag: adom
+                      value: '{#ADOM.NAME}'
+                    - tag: component
+                      value: adom
+                    - tag: scope
+                      value: capacity
+                    - tag: storage
+                      value: archive
+                - uuid: fbac281a69db43b6a429e46da111cf9d
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.adom.archive.utilization[{#SNMPINDEX}],15m)>{$FAZ.ADOM.LOG.UTIL.WARN}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.adom.archive.utilization[{#SNMPINDEX}],15m)<{$FAZ.ADOM.LOG.UTIL.WARN}'
+                  name: 'ADOM [{#ADOM.NAME}]: Archive log utilization is high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  manual_close: 'YES'
+                  dependencies:
+                    - name: 'ADOM [{#ADOM.NAME}]: Archive log utilization is critically high'
+                      expression: 'min(/FortiAnalyzer by SNMP/faz.adom.archive.utilization[{#SNMPINDEX}],15m)>{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                      recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.adom.archive.utilization[{#SNMPINDEX}],15m)<{$FAZ.ADOM.LOG.UTIL.CRIT}'
+                  tags:
+                    - tag: adom
+                      value: '{#ADOM.NAME}'
+                    - tag: component
+                      value: adom
+                    - tag: scope
+                      value: capacity
+                    - tag: storage
+                      value: archive
             - uuid: edaca26e53584700b439242d9d81026c
               name: 'ADOM [{#ADOM.NAME}]: Managed devices'
               type: SNMP_AGENT
@@ -592,7 +838,7 @@ zabbix_export:
               key: 'faz.adom.mode[{#SNMPINDEX}]'
               delay: 5m
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'FortiAnalyzer ADOM mode'
               tags:
@@ -620,7 +866,7 @@ zabbix_export:
               key: 'faz.adom.state[{#SNMPINDEX}]'
               delay: 5m
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'Fortinet boolean state'
               tags:
@@ -628,14 +874,32 @@ zabbix_export:
                   value: '{#ADOM.NAME}'
                 - tag: component
                   value: adom
+          graph_prototypes:
+            - uuid: db18b9d290f94ea084201ddf168111ab
+              name: 'ADOM [{#ADOM.NAME}]: Log utilization'
+              ymin_type_1: FIXED
+              ymax_type_1: FIXED
+              graph_items:
+                - color: 1A7C11
+                  calc_fnc: ALL
+                  item:
+                    host: 'FortiAnalyzer by SNMP'
+                    key: 'faz.adom.analytics.utilization[{#SNMPINDEX}]'
+                - sortorder: '1'
+                  color: '274482'
+                  calc_fnc: ALL
+                  item:
+                    host: 'FortiAnalyzer by SNMP'
+                    key: 'faz.adom.archive.utilization[{#SNMPINDEX}]'
         - uuid: 1c40e632a8354bb18bc95aa11cc8dd15
           name: 'Managed device discovery'
           type: SNMP_AGENT
-          snmp_oid: 'discovery[{#DEVICE.NAME},.1.3.6.1.4.1.12356.103.6.2.1.2,{#DEVICE.SERIAL},.1.3.6.1.4.1.12356.103.6.2.1.3,{#DEVICE.ADOM},.1.3.6.1.4.1.12356.103.6.2.1.5,{#DEVICE.IP},.1.3.6.1.4.1.12356.103.6.2.1.6,{#DEVICE.MODEL},.1.3.6.1.4.1.12356.103.6.2.1.16]'
+          snmp_oid: 'discovery[{#DEVICE.NAME},1.3.6.1.4.1.12356.103.6.2.1.2,{#DEVICE.SERIAL},1.3.6.1.4.1.12356.103.6.2.1.3,{#DEVICE.ADOM},1.3.6.1.4.1.12356.103.6.2.1.5,{#DEVICE.IP},1.3.6.1.4.1.12356.103.6.2.1.6,{#DEVICE.MODEL},1.3.6.1.4.1.12356.103.6.2.1.16]'
           key: faz.device.discovery
           delay: 1h
           enabled_lifetime_type: DISABLE_AFTER
           enabled_lifetime: 1d
+          description: 'Discovers devices managed by FortiAnalyzer and collects their identity, platform, ADOM, management address, operating system, and operational state information.'
           item_prototypes:
             - uuid: 24180ddfafd74db2807af1fe23f8a291
               name: 'Managed device [{#DEVICE.NAME}]: ADOM'
@@ -644,7 +908,7 @@ zabbix_export:
               key: 'faz.device.adom[{#SNMPINDEX}]'
               delay: 1h
               history: 7d
-              value_type: TEXT
+              value_type: CHAR
               trends: '0'
               description: 'Administrative domain containing the managed device.'
               tags:
@@ -678,7 +942,7 @@ zabbix_export:
               key: 'faz.device.configuration.state[{#SNMPINDEX}]'
               delay: 5m
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'FortiAnalyzer managed device configuration state'
               tags:
@@ -686,6 +950,22 @@ zabbix_export:
                   value: managed-device
                 - tag: device
                   value: '{#DEVICE.NAME}'
+              trigger_prototypes:
+                - uuid: 05afd01b619b4452b3791ff15dda2abe
+                  expression: 'last(/FortiAnalyzer by SNMP/faz.device.configuration.state[{#SNMPINDEX}])=2'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/FortiAnalyzer by SNMP/faz.device.configuration.state[{#SNMPINDEX}])=1'
+                  name: 'Device [{#DEVICE.NAME}]: Configuration is out of sync'
+                  opdata: 'Current state: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: 'The managed device configuration is out of sync with FortiAnalyzer.'
+                  tags:
+                    - tag: component
+                      value: managed-device
+                    - tag: device
+                      value: '{#DEVICE.NAME}'
+                    - tag: scope
+                      value: notice
             - uuid: 3dc9866c3909455199f371079f2f73c6
               name: 'Managed device [{#DEVICE.NAME}]: Connection state'
               type: SNMP_AGENT
@@ -693,7 +973,7 @@ zabbix_export:
               key: 'faz.device.connection.state[{#SNMPINDEX}]'
               delay: 5m
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'FortiAnalyzer managed device connection state'
               tags:
@@ -701,6 +981,22 @@ zabbix_export:
                   value: managed-device
                 - tag: device
                   value: '{#DEVICE.NAME}'
+              trigger_prototypes:
+                - uuid: ac8cca1b407246c7adaaa1a9e3d804c2
+                  expression: 'count(/FortiAnalyzer by SNMP/faz.device.connection.state[{#SNMPINDEX}],10m,"eq",2)>=2'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/FortiAnalyzer by SNMP/faz.device.connection.state[{#SNMPINDEX}])=1'
+                  name: 'Device [{#DEVICE.NAME}]: Connection is down'
+                  opdata: 'Current state: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  description: 'The connection between FortiAnalyzer and the managed device is down.'
+                  tags:
+                    - tag: component
+                      value: managed-device
+                    - tag: device
+                      value: '{#DEVICE.NAME}'
+                    - tag: scope
+                      value: availability
             - uuid: f09ca54cb8a7412dbfcbbe7e375e57a0
               name: 'Managed device [{#DEVICE.NAME}]: Database state'
               type: SNMP_AGENT
@@ -708,7 +1004,7 @@ zabbix_export:
               key: 'faz.device.database.state[{#SNMPINDEX}]'
               delay: 5m
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'FortiAnalyzer managed device database state'
               tags:
@@ -723,7 +1019,7 @@ zabbix_export:
               key: 'faz.device.ha.group[{#SNMPINDEX}]'
               delay: 1h
               history: 7d
-              value_type: TEXT
+              value_type: CHAR
               trends: '0'
               tags:
                 - tag: component
@@ -737,7 +1033,7 @@ zabbix_export:
               key: 'faz.device.ha.mode[{#SNMPINDEX}]'
               delay: 5m
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'FortiAnalyzer managed device HA mode'
               tags:
@@ -752,7 +1048,7 @@ zabbix_export:
               key: 'faz.device.ip[{#SNMPINDEX}]'
               delay: 1h
               history: 7d
-              value_type: TEXT
+              value_type: CHAR
               trends: '0'
               description: 'IP address of the managed device.'
               tags:
@@ -824,7 +1120,7 @@ zabbix_export:
               key: 'faz.device.model[{#SNMPINDEX}]'
               delay: 1h
               history: 7d
-              value_type: TEXT
+              value_type: CHAR
               trends: '0'
               description: 'Hardware platform of the managed device.'
               tags:
@@ -881,7 +1177,7 @@ zabbix_export:
               key: 'faz.device.serial[{#SNMPINDEX}]'
               delay: 1h
               history: 7d
-              value_type: TEXT
+              value_type: CHAR
               trends: '0'
               description: 'Serial number of the managed device.'
               tags:
@@ -896,7 +1192,7 @@ zabbix_export:
               key: 'faz.device.support.state[{#SNMPINDEX}]'
               delay: 1h
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'FortiAnalyzer managed device support state'
               tags:
@@ -911,7 +1207,7 @@ zabbix_export:
               key: 'faz.device.vdom.enabled[{#SNMPINDEX}]'
               delay: 1h
               history: 7d
-              trends: 90d
+              trends: '0'
               valuemap:
                 name: 'Fortinet boolean state'
               tags:
@@ -922,9 +1218,12 @@ zabbix_export:
         - uuid: 75759e54432b4210983f7f679b8c90f4
           name: 'FortiAnalyzer disk I/O discovery'
           type: SNMP_AGENT
-          snmp_oid: 'discovery[{#DISK.NAME},.1.3.6.1.4.1.12356.103.2.1.17.1.2]'
+          snmp_oid: 'discovery[{#DISK.NAME},1.3.6.1.4.1.12356.103.2.1.17.1.2]'
           key: faz.disk.io.discovery
           delay: 1h
+          enabled_lifetime_type: DISABLE_AFTER
+          enabled_lifetime: 1d
+          description: 'Discovers FortiAnalyzer disks that expose vendor-specific disk I/O utilization metrics.'
           item_prototypes:
             - uuid: f1fa1b2e4a1f4b72a7e041f68c490d8d
               name: 'Disk [{#DISK.NAME}]: I/O utilization'
@@ -944,10 +1243,56 @@ zabbix_export:
                   value: storage
                 - tag: disk
                   value: '{#DISK.NAME}'
+              trigger_prototypes:
+                - uuid: 987b9548cc664a79a17f622a2c538e2a
+                  expression: 'avg(/FortiAnalyzer by SNMP/faz.disk.io.util[{#SNMPINDEX}],15m)>{$FAZ.DISK.IO.UTIL.CRIT}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'avg(/FortiAnalyzer by SNMP/faz.disk.io.util[{#SNMPINDEX}],15m)<{$FAZ.DISK.IO.UTIL.CRIT}'
+                  name: 'Disk [{#DISK.NAME}]: I/O utilization is critically high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  description: 'The average disk I/O utilization has exceeded the critical threshold for 15 minutes.'
+                  tags:
+                    - tag: component
+                      value: storage
+                    - tag: disk
+                      value: '{#DISK.NAME}'
+                    - tag: scope
+                      value: performance
+                - uuid: c51e4000f9d747a0805eed4471ab9a74
+                  expression: 'avg(/FortiAnalyzer by SNMP/faz.disk.io.util[{#SNMPINDEX}],15m)>{$FAZ.DISK.IO.UTIL.WARN}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'avg(/FortiAnalyzer by SNMP/faz.disk.io.util[{#SNMPINDEX}],15m)<{$FAZ.DISK.IO.UTIL.WARN}'
+                  name: 'Disk [{#DISK.NAME}]: I/O utilization is high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  description: 'The average disk I/O utilization has exceeded the warning threshold for 15 minutes.'
+                  dependencies:
+                    - name: 'Disk [{#DISK.NAME}]: I/O utilization is critically high'
+                      expression: 'avg(/FortiAnalyzer by SNMP/faz.disk.io.util[{#SNMPINDEX}],15m)>{$FAZ.DISK.IO.UTIL.CRIT}'
+                      recovery_expression: 'avg(/FortiAnalyzer by SNMP/faz.disk.io.util[{#SNMPINDEX}],15m)<{$FAZ.DISK.IO.UTIL.CRIT}'
+                  tags:
+                    - tag: component
+                      value: storage
+                    - tag: disk
+                      value: '{#DISK.NAME}'
+                    - tag: scope
+                      value: performance
+          graph_prototypes:
+            - uuid: 6b12bdace4e0421e85c00394248437b4
+              name: 'Disk [{#DISK.NAME}]: I/O utilization'
+              ymin_type_1: FIXED
+              ymax_type_1: FIXED
+              graph_items:
+                - color: 1A7C11
+                  calc_fnc: ALL
+                  item:
+                    host: 'FortiAnalyzer by SNMP'
+                    key: 'faz.disk.io.util[{#SNMPINDEX}]'
         - uuid: 1e303c765e534c1c8c1ceead85825ea1
           name: 'Storage discovery'
           type: SNMP_AGENT
-          snmp_oid: 'discovery[{#STORAGE.TYPE},.1.3.6.1.2.1.25.2.3.1.2,{#STORAGE.NAME},.1.3.6.1.2.1.25.2.3.1.3]'
+          snmp_oid: 'discovery[{#STORAGE.TYPE},1.3.6.1.2.1.25.2.3.1.2,{#STORAGE.NAME},1.3.6.1.2.1.25.2.3.1.3]'
           key: faz.storage.discovery
           delay: 1h
           filter:
@@ -955,6 +1300,9 @@ zabbix_export:
               - macro: '{#STORAGE.NAME}'
                 value: '^(Compact Flash Disk|Internal Hard Disk)$'
                 formulaid: A
+          enabled_lifetime_type: DISABLE_AFTER
+          enabled_lifetime: 1d
+          description: 'Discovers fixed storage resources using HOST-RESOURCES-MIB. The default filter includes Compact Flash Disk and Internal Hard Disk entries and excludes physical memory and swap.'
           item_prototypes:
             - uuid: 1580c352fefa41f3a6b7c30d661abf6b
               name: 'Storage [{#STORAGE.NAME}]: Allocation unit'
@@ -964,6 +1312,7 @@ zabbix_export:
               delay: 1h
               history: 7d
               trends: '0'
+              units: B
               tags:
                 - tag: component
                   value: storage
@@ -1038,25 +1387,465 @@ zabbix_export:
                   value: storage
                 - tag: storage
                   value: '{#STORAGE.NAME}'
+              trigger_prototypes:
+                - uuid: baf2fbf2ee4345199702c14eafd5800d
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.storage.util[{#SNMPINDEX}],10m)>{$FAZ.DISK.UTIL.CRIT}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.storage.util[{#SNMPINDEX}],10m)<{$FAZ.DISK.UTIL.CRIT}'
+                  name: 'Storage [{#STORAGE.NAME}]: Utilization is critically high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  tags:
+                    - tag: component
+                      value: storage
+                    - tag: scope
+                      value: capacity
+                    - tag: storage
+                      value: '{#STORAGE.NAME}'
+                - uuid: bfdc88c458db45a39854cf8e7f47d168
+                  expression: 'min(/FortiAnalyzer by SNMP/faz.storage.util[{#SNMPINDEX}],10m)>{$FAZ.DISK.UTIL.WARN}'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.storage.util[{#SNMPINDEX}],10m)<{$FAZ.DISK.UTIL.WARN}'
+                  name: 'Storage [{#STORAGE.NAME}]: Utilization is high'
+                  opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+                  priority: WARNING
+                  dependencies:
+                    - name: 'Storage [{#STORAGE.NAME}]: Utilization is critically high'
+                      expression: 'min(/FortiAnalyzer by SNMP/faz.storage.util[{#SNMPINDEX}],10m)>{$FAZ.DISK.UTIL.CRIT}'
+                      recovery_expression: 'max(/FortiAnalyzer by SNMP/faz.storage.util[{#SNMPINDEX}],10m)<{$FAZ.DISK.UTIL.CRIT}'
+                  tags:
+                    - tag: component
+                      value: storage
+                    - tag: scope
+                      value: capacity
+                    - tag: storage
+                      value: '{#STORAGE.NAME}'
+          graph_prototypes:
+            - uuid: 85efc7fbf01845aba7d26f2207f8eb6c
+              name: 'Storage [{#STORAGE.NAME}]: Utilization'
+              ymin_type_1: FIXED
+              ymax_type_1: FIXED
+              graph_items:
+                - color: 1A7C11
+                  calc_fnc: ALL
+                  item:
+                    host: 'FortiAnalyzer by SNMP'
+                    key: 'faz.storage.util[{#SNMPINDEX}]'
+      tags:
+        - tag: class
+          value: network
+        - tag: target
+          value: fortianalyzer
+        - tag: target
+          value: fortinet
       macros:
+        - macro: '{$FAZ.ADOM.LOG.UTIL.CRIT}'
+          value: '90'
+          description: 'Critical threshold for ADOM archive and analytics log utilization, expressed as a percentage.'
+        - macro: '{$FAZ.ADOM.LOG.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold for ADOM archive and analytics log utilization, expressed as a percentage.'
         - macro: '{$FAZ.CPU.UTIL.CRIT}'
           value: '90'
-          description: 'CPU critical threshold'
+          description: 'Critical threshold for FortiAnalyzer CPU utilization, expressed as a percentage.'
         - macro: '{$FAZ.CPU.UTIL.WARN}'
           value: '80'
-          description: 'CPU warning threshold'
+          description: 'Warning threshold for FortiAnalyzer CPU utilization, expressed as a percentage.'
+        - macro: '{$FAZ.DISK.IO.UTIL.CRIT}'
+          value: '90'
+          description: 'Critical threshold for FortiAnalyzer disk I/O utilization, expressed as a percentage.'
+        - macro: '{$FAZ.DISK.IO.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold for FortiAnalyzer disk I/O utilization, expressed as a percentage.'
         - macro: '{$FAZ.DISK.UTIL.CRIT}'
           value: '90'
-          description: 'Disk critical threshold'
+          description: 'Critical threshold for FortiAnalyzer storage utilization, expressed as a percentage.'
         - macro: '{$FAZ.DISK.UTIL.WARN}'
           value: '80'
-          description: 'Disk warning threshold'
+          description: 'Warning threshold for FortiAnalyzer storage utilization, expressed as a percentage.'
+        - macro: '{$FAZ.LOG.INDEXING.LAG.CRIT}'
+          value: '900'
+          description: 'Critical threshold for the delay between log reception and indexing, expressed in seconds.'
+        - macro: '{$FAZ.LOG.INDEXING.LAG.WARN}'
+          value: '300'
+          description: 'Warning threshold for the delay between log reception and indexing, expressed in seconds.'
         - macro: '{$FAZ.MEMORY.UTIL.CRIT}'
           value: '90'
-          description: 'Memory critical threshold'
+          description: 'Critical threshold for FortiAnalyzer memory utilization, expressed as a percentage.'
         - macro: '{$FAZ.MEMORY.UTIL.WARN}'
           value: '80'
-          description: 'Memory warning threshold'
+          description: 'Warning threshold for FortiAnalyzer memory utilization, expressed as a percentage.'
+        - macro: '{$FAZ.SNMP.NODATA.TIME}'
+          value: 10m
+          description: 'Time period without SNMP data before the availability trigger is raised.'
+      dashboards:
+        - uuid: 5c79e63c2db44b83b3fb351df27d3b1e
+          name: 'FortiAnalyzer Overview'
+          pages:
+            - widgets:
+                - type: gauge
+                  name: 'CPU utilization'
+                  width: '15'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.system.cpu.util
+                    - type: STRING
+                      name: max
+                      value: '100'
+                    - type: STRING
+                      name: min
+                      value: '0'
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: show.1
+                      value: '4'
+                    - type: INTEGER
+                      name: show.2
+                      value: '5'
+                    - type: STRING
+                      name: thresholds.0.color
+                      value: FFD54F
+                    - type: STRING
+                      name: thresholds.0.threshold
+                      value: '80'
+                    - type: STRING
+                      name: thresholds.1.color
+                      value: B71C1C
+                    - type: STRING
+                      name: thresholds.1.threshold
+                      value: '90'
+                    - type: STRING
+                      name: units_color
+                      value: 1C58D9
+                    - type: STRING
+                      name: value_arc_color
+                      value: 2E7D32
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                - type: item
+                  name: 'Managed devices'
+                  'y': '3'
+                  width: '9'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '30'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.device.count
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: show.1
+                      value: '4'
+                    - type: INTEGER
+                      name: units_size
+                      value: '30'
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                    - type: INTEGER
+                      name: value_size
+                      value: '30'
+                - type: problems
+                  name: Problems
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: STRING
+                      name: reference
+                      value: MXPFY
+                - type: item
+                  name: 'Number of ADOMs'
+                  x: '9'
+                  'y': '3'
+                  width: '9'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '30'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.adom.count
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: show.1
+                      value: '4'
+                    - type: INTEGER
+                      name: units_size
+                      value: '30'
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                    - type: INTEGER
+                      name: value_size
+                      value: '30'
+                - type: gauge
+                  name: 'Memory utilization'
+                  x: '15'
+                  width: '14'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.system.memory.util
+                    - type: STRING
+                      name: max
+                      value: '100'
+                    - type: STRING
+                      name: min
+                      value: '0'
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: show.1
+                      value: '4'
+                    - type: INTEGER
+                      name: show.2
+                      value: '5'
+                    - type: STRING
+                      name: thresholds.0.color
+                      value: FFD54F
+                    - type: STRING
+                      name: thresholds.0.threshold
+                      value: '80'
+                    - type: STRING
+                      name: thresholds.1.color
+                      value: B71C1C
+                    - type: STRING
+                      name: thresholds.1.threshold
+                      value: '90'
+                    - type: STRING
+                      name: units_color
+                      value: 1C58D9
+                    - type: STRING
+                      name: value_arc_color
+                      value: 2E7D32
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                - type: item
+                  name: 'Log indexing lag'
+                  x: '18'
+                  'y': '3'
+                  width: '9'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '30'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.log.indexing.lag
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: units_size
+                      value: '30'
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                    - type: INTEGER
+                      name: value_size
+                      value: '30'
+                - type: item
+                  name: 'HA peer count'
+                  x: '27'
+                  'y': '3'
+                  width: '9'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '30'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.ha.peer.count
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: units_size
+                      value: '30'
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                    - type: INTEGER
+                      name: value_size
+                      value: '30'
+                - type: item
+                  name: 'Firmware version'
+                  x: '29'
+                  width: '15'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '15'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.system.firmware
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: show.1
+                      value: '4'
+                    - type: INTEGER
+                      name: units_size
+                      value: '15'
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                    - type: INTEGER
+                      name: value_size
+                      value: '15'
+                - type: svggraph
+                  name: 'Log processing rates'
+                  x: '36'
+                  'y': '3'
+                  width: '36'
+                  height: '8'
+                  fields:
+                    - type: STRING
+                      name: ds.0.color
+                      value: BF360C
+                    - type: INTEGER
+                      name: ds.0.fill
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Log receiving rate'
+                    - type: INTEGER
+                      name: ds.0.width
+                      value: '2'
+                    - type: STRING
+                      name: ds.1.color
+                      value: 1565C0
+                    - type: INTEGER
+                      name: ds.1.fill
+                      value: '0'
+                    - type: STRING
+                      name: ds.1.items.0
+                      value: 'Log indexing rate'
+                    - type: INTEGER
+                      name: ds.1.width
+                      value: '2'
+                    - type: STRING
+                      name: reference
+                      value: ADFVI
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'HA mode'
+                  x: '44'
+                  width: '14'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '20'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.ha.mode
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: units_size
+                      value: '20'
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                    - type: INTEGER
+                      name: value_size
+                      value: '20'
+                - type: item
+                  name: 'System uptime'
+                  x: '58'
+                  width: '14'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '20'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'FortiAnalyzer by SNMP'
+                        key: faz.system.uptime
+                    - type: INTEGER
+                      name: show.0
+                      value: '2'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_size
+                      value: '20'
+                    - type: STRING
+                      name: value_color
+                      value: 1C58D9
+                    - type: INTEGER
+                      name: value_size
+                      value: '20'
       valuemaps:
         - uuid: d3d224e8e9954519969dd4ae14492408
           name: 'FortiAnalyzer ADOM mode'
@@ -1071,9 +1860,9 @@ zabbix_export:
             - value: '0'
               newvalue: Standalone
             - value: '1'
-              newvalue: Primary
+              newvalue: Master
             - value: '2'
-              newvalue: Secondary
+              newvalue: Slave
         - uuid: 25202cbf6963412ead63fb3710833eb0
           name: 'FortiAnalyzer managed device configuration state'
           mappings:
@@ -1130,3 +1919,83 @@ zabbix_export:
               newvalue: Disabled
             - value: '2'
               newvalue: Enabled
+  triggers:
+    - uuid: 885ce74db91040f783e9461f2bcf97fe
+      expression: 'last(/FortiAnalyzer by SNMP/faz.ha.mode)<>0 and last(/FortiAnalyzer by SNMP/faz.ha.peer.count)=0'
+      name: 'HA is enabled but no peer is available'
+      opdata: 'HA mode: {ITEM.LASTVALUE1}'
+      priority: HIGH
+      description: 'FortiAnalyzer HA mode is enabled, but no HA peer is currently reported.'
+      tags:
+        - tag: component
+          value: ha
+        - tag: scope
+          value: availability
+  graphs:
+    - uuid: 9396b5121bf042f08a295df7b16ce5e0
+      name: 'Log indexing performance'
+      ymin_type_1: FIXED
+      graph_items:
+        - color: 1A7C11
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.log.indexing.lag
+    - uuid: dccf35c82cce42e18c42b20e27e40d05
+      name: 'Log processing rates'
+      ymin_type_1: FIXED
+      graph_items:
+        - color: 1A7C11
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.log.indexing.rate
+        - sortorder: '1'
+          color: '274482'
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.log.rate
+        - sortorder: '2'
+          color: F63100
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.log.rate.average
+    - uuid: 333f00d34e6d4e6187e644908d7f6ca5
+      name: 'Log volume'
+      ymin_type_1: FIXED
+      graph_items:
+        - color: 1A7C11
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.log.volume.today
+        - sortorder: '1'
+          color: '274482'
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.log.volume.yesterday
+        - sortorder: '2'
+          color: F63100
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.log.volume.week.average
+    - uuid: 9699c786422041cabc936745fc9a43ff
+      name: 'System resource utilization'
+      ymin_type_1: FIXED
+      ymax_type_1: FIXED
+      graph_items:
+        - color: FF6F00
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.system.cpu.util
+        - sortorder: '1'
+          color: '274482'
+          calc_fnc: ALL
+          item:
+            host: 'FortiAnalyzer by SNMP'
+            key: faz.system.memory.util
