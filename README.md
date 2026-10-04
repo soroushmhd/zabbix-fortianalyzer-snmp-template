@@ -255,7 +255,7 @@ This approach allows the same template to be linked to multiple FortiAnalyzer ho
 
 ## Installation
 
-1. Download [`templates/template_fortianalyzer_snmp.yaml`](templates/template_fortianalyzer_snmp.yaml).
+1. Download [`templates/template_fortianalyzer_by_snmp.yaml`](templates/template_fortianalyzer_by_snmp.yaml).
 2. In the Zabbix frontend, open **Data collection → Templates**.
 3. Select **Import**, choose the YAML file, and complete the import.
 4. Create or open the FortiAnalyzer host.
