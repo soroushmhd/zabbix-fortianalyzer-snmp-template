@@ -36,7 +36,6 @@ The template uses numeric OIDs, so Fortinet MIB files are not required on the Za
 | Firmware version | `faz.system.firmware` |
 | Uptime | `faz.system.uptime` |
 | CPU utilization | `faz.system.cpu.util` |
-| CPU utilization excluding nice processes | `faz.system.cpu.util.excluding_nice` |
 | Memory total | `faz.system.memory.total` |
 | Memory used | `faz.system.memory.used` |
 | Memory utilization | `faz.system.memory.util` |
@@ -51,15 +50,15 @@ The template uses numeric OIDs, so Fortinet MIB files are not required on the Za
 | Log indexing lag | `faz.log.indexing.lag` |
 | Log volume received today | `faz.log.volume.today` |
 | Log volume received yesterday | `faz.log.volume.yesterday` |
-| Seven-day daily average log volume | `faz.log.volume.week.average` |
+| Daily average log volume over seven days | `faz.log.volume.week.average` |
 
 ### ADOM summary
 
 | Item | Key |
 |---|---|
 | ADOM enabled state | `faz.adom.enabled` |
-| Number of administrative domains | `faz.adom.count` |
-| Maximum number of administrative domains | `faz.adom.max` |
+| Configured domain count | `faz.adom.count` |
+| Maximum supported domains | `faz.adom.max` |
 
 ### Managed resource summary
 
@@ -73,7 +72,7 @@ The template uses numeric OIDs, so Fortinet MIB files are not required on the Za
 | Item | Key |
 |---|---|
 | HA mode | `faz.ha.mode` |
-| HA cluster ID | `faz.ha.cluster.id` |
+| HA cluster identifier | `faz.ha.cluster.id` |
 | HA peer count | `faz.ha.peer.count` |
 
 HA scalar metrics have been validated on a standalone FortiAnalyzer appliance. HA peer discovery and HA-related trigger behavior have not been validated against an active FortiAnalyzer HA cluster.
@@ -81,7 +80,7 @@ HA scalar metrics have been validated on a standalone FortiAnalyzer appliance. H
 ## Low-level discovery
 
 | Discovery rule | Key | Default interval |
-|---|---|---|
+|---|---|---:|
 | ADOM discovery | `faz.adom.discovery` | 1h |
 | Managed device discovery | `faz.device.discovery` | 1h |
 | FortiAnalyzer disk I/O discovery | `faz.disk.io.discovery` | 1h |
@@ -220,71 +219,23 @@ The template includes a dashboard providing a consolidated view of system resour
 | Host configuration | An SNMP interface must be configured on the Zabbix host |
 | Credentials | SNMPv2c or SNMPv3 credentials supported by the target FortiAnalyzer configuration |
 
-The tested environment uses SNMPv3 with `authPriv`. The template does not contain SNMP usernames, authentication passwords, privacy passwords, community strings, management addresses, or other environment-specific credentials.
+The tested environment uses SNMPv3 with `authPriv`. The template does not contain SNMP credentials, community strings, management addresses, or other environment-specific values.
 
 ## Installation
 
-1. Download the template file:
+1. Download [`templates/template_fortianalyzer_snmp.yaml`](templates/template_fortianalyzer_snmp.yaml).
+2. In the Zabbix frontend, open **Data collection → Templates**.
+3. Select **Import**, choose the YAML file, and complete the import.
+4. Create or open the FortiAnalyzer host.
+5. Add an SNMP interface using the FortiAnalyzer management address.
+6. Configure the required SNMP credentials on the host interface.
+7. Link the `FortiAnalyzer by SNMP` template to the host.
+8. Wait for the initial polling and low-level discovery cycles.
+9. Review the results under **Monitoring → Latest data**.
 
-   ```text
-   templates/template_fortianalyzer_snmp.yaml
-   ```
-
-2. Sign in to the Zabbix frontend.
-
-3. Navigate to:
-
-   ```text
-   Data collection → Templates
-   ```
-
-4. Select **Import**.
-
-5. Select `template_fortianalyzer_snmp.yaml` and complete the import.
-
-6. Create or open the FortiAnalyzer host.
-
-7. Add an SNMP interface using the FortiAnalyzer management address.
-
-8. Configure the required SNMP credentials on the host interface.
-
-9. Link the `FortiAnalyzer by SNMP` template to the host.
-
-10. Wait for the first polling and low-level discovery cycles to complete.
-
-11. Review the collected values under:
-
-    ```text
-    Monitoring → Latest data
-    ```
-
-## SNMP configuration
-
-| Setting | Tested value |
-|---|---|
-| SNMP version | SNMPv3 |
-| Security level | `authPriv` |
-| Authentication protocol | SHA |
-| Privacy protocol | AES |
-
-SNMP credentials must be configured on the Zabbix host interface and must never be stored inside the template export or committed to the repository.
-
-## Template design
-
-| Principle | Implementation |
-|---|---|
-| MIB independence | Numeric OIDs avoid a runtime dependency on Fortinet MIB files |
-| Dynamic discovery | LLD is used for ADOMs, managed devices, storage resources, and disks |
-| Derived metrics | Calculated items provide memory and storage utilization and capacity metrics |
-| Credential isolation | Environment-specific values and credentials remain outside the template |
-| Predictable keys | Item and discovery keys use the `faz` namespace |
-| Resource separation | Discovery rules and prototypes are separated by monitored resource type |
-| Configurable thresholds | Trigger thresholds are controlled through template macros |
-| Duplicate prevention | Warning triggers depend on their corresponding critical triggers |
+SNMP credentials must be configured on the host interface and must never be stored inside the template export or committed to the repository.
 
 ## Testing and validation
-
-The template has been imported and tested against the environment described above.
 
 | Validated area | Status |
 |---|---|
@@ -295,7 +246,7 @@ The template has been imported and tested against the environment described abov
 | Managed device discovery | Validated |
 | Storage discovery | Validated |
 | FortiAnalyzer disk I/O discovery | Validated |
-| Calculated memory and storage utilization | Validated |
+| Calculated memory and storage metrics | Validated |
 | Value mappings | Validated |
 | Trigger expressions and dependencies | Validated |
 | Graphs and graph prototypes | Validated |

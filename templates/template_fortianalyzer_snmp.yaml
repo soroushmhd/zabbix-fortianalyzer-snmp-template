@@ -37,14 +37,14 @@ zabbix_export:
         - name: 'Templates/Network devices'
       items:
         - uuid: af599820e36242a3ba3110e9e3115181
-          name: 'ADOM: Number of administrative domains'
+          name: 'ADOMs: Configured domain count'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.5.1.2.0
           key: faz.adom.count
           delay: 5m
           history: 7d
           trends: 90d
-          description: 'Number of administrative domains currently present in the FortiAnalyzer ADOM table.'
+          description: 'Number of administrative domains currently configured on the FortiAnalyzer appliance.'
           tags:
             - tag: component
               value: adom
@@ -57,7 +57,7 @@ zabbix_export:
           history: 7d
           trends: '0'
           description: |
-            Indicates whether the administrative domain feature is enabled on the FortiAnalyzer.
+            Indicates whether administrative domains are enabled on the FortiAnalyzer appliance.
 
             Possible values:
             1 - Disabled
@@ -68,14 +68,14 @@ zabbix_export:
             - tag: component
               value: adom
         - uuid: d6d3d5f9da784497a869f465504d54b7
-          name: 'ADOM: Maximum number of administrative domains'
+          name: 'ADOMs: Maximum supported domains'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.5.1.3.0
           key: faz.adom.max
           delay: 1h
           history: 7d
           trends: 90d
-          description: 'Maximum number of administrative domains permitted by the appliance platform or license.'
+          description: 'Maximum number of administrative domains supported by the current FortiAnalyzer platform or license.'
           tags:
             - tag: component
               value: adom
@@ -87,12 +87,12 @@ zabbix_export:
           delay: 5m
           history: 7d
           trends: 90d
-          description: 'Total number of devices managed by the FortiAnalyzer appliance.'
+          description: 'Total number of managed devices currently reported by FortiAnalyzer.'
           tags:
             - tag: component
               value: managed-device
         - uuid: 52d9d19946a84c149521cfedaa03133d
-          name: 'HA: Cluster ID'
+          name: 'HA: Cluster identifier'
           type: SNMP_AGENT
           snmp_oid: 1.3.6.1.4.1.12356.103.9.1.2.0
           key: faz.ha.cluster.id
@@ -112,7 +112,7 @@ zabbix_export:
           history: 7d
           trends: '0'
           description: |
-            Current FortiAnalyzer high-availability operating mode.
+            Current high-availability operating mode of the FortiAnalyzer appliance.
 
             Possible values:
             0 - Standalone
@@ -131,7 +131,7 @@ zabbix_export:
           delay: 5m
           history: 7d
           trends: 90d
-          description: 'Number of HA peers currently reported by the FortiAnalyzer.'
+          description: 'Number of HA peers currently reported by the appliance.'
           tags:
             - tag: component
               value: ha
@@ -198,7 +198,7 @@ zabbix_export:
           history: 7d
           trends: 90d
           units: lps
-          description: 'Current log receiving rate in logs per second.'
+          description: 'Current rate of logs received by FortiAnalyzer, in logs per second.'
           tags:
             - tag: component
               value: log
@@ -282,7 +282,7 @@ zabbix_export:
           history: 7d
           trends: 90d
           units: '%'
-          description: 'Current FortiAnalyzer CPU utilization in percent.'
+          description: 'Current FortiAnalyzer CPU utilization, expressed as a percentage.'
           tags:
             - tag: component
               value: cpu
@@ -317,18 +317,6 @@ zabbix_export:
                   value: cpu
                 - tag: scope
                   value: performance
-        - uuid: afa9604af2e047c8ac53faed70a4c172
-          name: 'FortiAnalyzer: CPU utilization excluding nice processes'
-          type: SNMP_AGENT
-          snmp_oid: 1.3.6.1.4.1.12356.103.2.1.6.0
-          key: faz.system.cpu.util.excluding_nice
-          history: 7d
-          trends: 90d
-          units: '%'
-          description: 'Current FortiAnalyzer CPU utilization excluding CPU time consumed by processes running with a nice priority, expressed as a percentage.'
-          tags:
-            - tag: component
-              value: cpu
         - uuid: 80f5614bd10a49888ed483c86bb16ea9
           name: 'FortiAnalyzer: Firmware version'
           type: SNMP_AGENT
@@ -338,7 +326,7 @@ zabbix_export:
           history: 30d
           value_type: CHAR
           trends: '0'
-          description: 'Firmware version currently installed on the FortiAnalyzer.'
+          description: 'FortiAnalyzer firmware version and build information.'
           inventory_link: SOFTWARE
           tags:
             - tag: component
@@ -352,7 +340,7 @@ zabbix_export:
           history: 7d
           trends: 90d
           units: B
-          description: 'Total physical and swap memory are reported by FortiAnalyzer. The SNMP value is reported in KiB and converted to bytes during preprocessing.'
+          description: 'Total memory capacity reported by the FortiAnalyzer appliance.'
           preprocessing:
             - type: MULTIPLIER
               parameters:
@@ -368,7 +356,7 @@ zabbix_export:
           history: 7d
           trends: 90d
           units: B
-          description: 'Current physical and swap memory used by FortiAnalyzer. The SNMP value is reported in KiB and converted to bytes during preprocessing.'
+          description: 'Amount of memory currently in use on the FortiAnalyzer appliance.'
           preprocessing:
             - type: MULTIPLIER
               parameters:
@@ -385,7 +373,7 @@ zabbix_export:
           trends: 90d
           units: '%'
           params: 'last(//faz.system.memory.used)/last(//faz.system.memory.total)*100'
-          description: 'Current memory utilization calculated as used memory divided by total memory, expressed as a percentage.'
+          description: 'Percentage of total memory currently in use.'
           tags:
             - tag: component
               value: memory
@@ -453,7 +441,7 @@ zabbix_export:
           history: 7d
           value_type: CHAR
           trends: '0'
-          description: 'Serial number of the FortiAnalyzer appliance.'
+          description: 'Serial number reported by the FortiAnalyzer appliance.'
           inventory_link: SERIALNO_A
           tags:
             - tag: component
@@ -466,7 +454,7 @@ zabbix_export:
           history: 7d
           trends: 90d
           units: uptime
-          description: 'Time elapsed since the FortiAnalyzer network management subsystem was last initialized.'
+          description: 'Time elapsed since the FortiAnalyzer management subsystem was last initialized.'
           preprocessing:
             - type: MULTIPLIER
               parameters:
