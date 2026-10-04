@@ -19,8 +19,8 @@ The template uses numeric OIDs, so Fortinet MIB files are not required on the Za
 | FortiAnalyzer version | v7.6.7 build 3737 |
 | SNMP version | SNMPv3 |
 | Security level | `authPriv` |
-| Authentication protocol | SHA |
-| Privacy protocol | AES |
+| Authentication protocol | SHA1 |
+| Privacy protocol | AES128 |
 | OID format | Numeric |
 | Fortinet MIB required | No |
 
@@ -220,6 +220,38 @@ The template includes a dashboard providing a consolidated view of system resour
 | Credentials | SNMPv2c or SNMPv3 credentials supported by the target FortiAnalyzer configuration |
 
 The tested environment uses SNMPv3 with `authPriv`. The template does not contain SNMP credentials, community strings, management addresses, or other environment-specific values.
+
+## Recommended SNMPv3 credential configuration
+
+To keep SNMPv3 credentials outside the template, define them as host-level macros on each FortiAnalyzer host.
+
+Open the host, select **Macros**, and create the following macros:
+
+| Host macro | Type | Value |
+|---|---|---|
+| `{$SECURITY_NAME}` | Text | SNMPv3 security name |
+| `{$AUTH_PASSPHRASE}` | Secret text | SNMPv3 authentication passphrase |
+| `{$PRIVACY_PASSPHRASE}` | Secret text | SNMPv3 privacy passphrase |
+
+The authentication and privacy passphrases should be stored as **Secret text**. Do not define these credentials in the template or commit their values to a repository.
+
+![FortiAnalyzer host SNMPv3 macros](screenshots/snmp_setup1.png)
+
+Configure the host SNMP interface with the following values:
+
+| SNMP interface field | Value |
+|---|---|
+| SNMP version | SNMPv3 |
+| Security name | `{$SECURITY_NAME}` |
+| Security level | `authPriv` |
+| Authentication protocol | SHA1 |
+| Authentication passphrase | `{$AUTH_PASSPHRASE}` |
+| Privacy protocol | AES128 |
+| Privacy passphrase | `{$PRIVACY_PASSPHRASE}` |
+
+![FortiAnalyzer host SNMPv3 interface](screenshots/snmp_setup2.png)
+
+This approach allows the same template to be linked to multiple FortiAnalyzer hosts while each host keeps its own SNMPv3 identity and secrets.
 
 ## Installation
 
