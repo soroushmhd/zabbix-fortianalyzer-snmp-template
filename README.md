@@ -10,6 +10,14 @@ A Zabbix template for monitoring Fortinet FortiAnalyzer appliances through SNMP.
 
 The template uses numeric OIDs, so Fortinet MIB files are not required on the Zabbix server or proxy.
 
+## Official community release
+
+This template has been accepted into the official Zabbix Community Templates repository:
+
+- [FortiAnalyzer by SNMP for Zabbix 7.0](https://github.com/zabbix/community-templates/tree/main/Network_Devices/Fortigate/template_fortianalyzer_by_snmp/7.0)
+
+- [Merged pull request #849](https://github.com/zabbix/community-templates/pull/849)
+
 ## Tested environment
 
 | Component | Version or configuration |
